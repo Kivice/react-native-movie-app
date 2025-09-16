@@ -8,10 +8,12 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import YoutubeIframe from "react-native-youtube-iframe";
+import { useState } from "react";
 
 import { icons } from "@/constants/icons";
 import useFetch from "@/services/usefetch";
-import { fetchMovieDetails } from "@/services/api";
+import { fetchMovieDetails, fetchMovieVideos } from "@/services/api";
 
 interface MovieInfoProps {
   label: string;
@@ -34,6 +36,12 @@ const Details = () => {
   const { data: movie, loading } = useFetch(() =>
     fetchMovieDetails(id as string)
   );
+  const { data: videos } = useFetch(() => fetchMovieVideos(id as string));
+  const [showPlayer, setShowPlayer] = useState(false);
+
+  const trailer = videos?.find(
+    (v) => v.site === "YouTube" && v.type === "Trailer"
+  );
 
   if (loading)
     return (
@@ -45,23 +53,39 @@ const Details = () => {
   return (
     <View className="bg-primary flex-1">
       <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
-        <View>
-          <Image
-            source={{
-              uri: `https://image.tmdb.org/t/p/w500${movie?.poster_path}`,
+        {showPlayer && trailer ? (
+          <YoutubeIframe
+            height={250}
+            play={true}
+            videoId={trailer.key}
+            onChangeState={(event) => {
+              if (event === "ended") {
+                setShowPlayer(false);
+              }
             }}
-            className="w-full h-[550px]"
-            resizeMode="stretch"
           />
-
-          <TouchableOpacity className="absolute bottom-5 right-5 rounded-full size-14 bg-white flex items-center justify-center">
+        ) : (
+          <View>
             <Image
-              source={icons.play}
-              className="w-6 h-7 ml-1"
+              source={{
+                uri: `https://image.tmdb.org/t/p/w500${movie?.poster_path}`,
+              }}
+              className="w-full h-[550px]"
               resizeMode="stretch"
             />
-          </TouchableOpacity>
-        </View>
+
+            <TouchableOpacity
+              className="absolute bottom-5 right-5 rounded-full size-14 bg-white flex items-center justify-center"
+              onPress={() => setShowPlayer(true)}
+            >
+              <Image
+                source={icons.play}
+                className="w-6 h-7 ml-1"
+                resizeMode="stretch"
+              />
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View className="flex-col items-start justify-center mt-5 px-5">
           <Text className="text-white font-bold text-xl">{movie?.title}</Text>
